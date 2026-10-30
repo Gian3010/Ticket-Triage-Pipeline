@@ -1,0 +1,42 @@
+name: triage-pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "0 9 * * 1-5"   # 09:00 UTC, dias úteis
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - run: python -m pytest -q
+
+  run-pipeline:
+    needs: test
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: src
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      TRIAGE_MODEL: ${{ vars.TRIAGE_MODEL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      # Em produção a caixa de entrada seria um bucket/SFTP; aqui geramos o lote do dia (sintético).
+      - run: python -m triage generate --n 1300 --seed $(date +%s) --name "lote_$(date +%F).csv"
+      - run: python -m triage run
+      - run: python -m triage roi

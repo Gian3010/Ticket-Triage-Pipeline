@@ -1,0 +1,45 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: triage
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-triage_dev_pw}
+      POSTGRES_DB: triage
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./sql/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U triage -d triage"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  pipeline:
+    build: .
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+psycopg2://triage:${POSTGRES_PASSWORD:-triage_dev_pw}@postgres:5432/triage
+      TRIAGE_MODE: ${TRIAGE_MODE:-auto}
+      TRIAGE_MODEL: ${TRIAGE_MODEL:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    volumes:
+      - ./data/inbox:/app/data/inbox
+      - ./data/processed:/app/data/processed
+    profiles: ["run"]   # executado sob demanda: docker compose run --rm pipeline
+
+  metabase:
+    image: metabase/metabase:latest
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    environment:
+      MB_DB_TYPE: h2   # metadados do próprio Metabase; os dados de negócio ficam no Postgres acima
+
+volumes:
+  pgdata:
