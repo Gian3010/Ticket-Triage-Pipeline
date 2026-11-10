@@ -56,11 +56,23 @@ ticket-triage-pipeline/
 
 ### 3.1 Rápido (SQLite, sem Docker, sem chave de API)
 
+**Linux / macOS**
 ```bash
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-export PYTHONPATH=src
+pip install -e .                         # torna o pacote `triage` importável (resolve "No module named triage")
+```
 
+**Windows (PowerShell)**
+```powershell
+python -m venv .venv
+.venv\Scripts\Activate.ps1               # se bloquear: Set-ExecutionPolicy -Scope Process RemoteSigned
+pip install -r requirements.txt
+pip install -e .
+```
+
+Depois, em qualquer sistema:
+```bash
 python -m pytest -q                      # 21 testes
 python -m triage generate --n 1300       # cria data/inbox/tickets_7.csv (sintético)
 python -m triage run                     # classifica e grava em data/triage.db
@@ -68,12 +80,15 @@ python -m triage roi                     # ROI simulado
 python -m triage eval                    # acurácia do classificador de regras vs gabarito
 ```
 
+> Sem `pip install -e .`, defina `PYTHONPATH=src` (Linux/macOS: `export PYTHONPATH=src`; PowerShell: `$env:PYTHONPATH="src"`; CMD: `set PYTHONPATH=src`). O comando `export` **não existe** no Windows.
+
 ### 3.2 Com PostgreSQL + Metabase (Docker)
 
 ```bash
 cp .env.example .env                       # defina POSTGRES_PASSWORD
 docker compose up -d postgres metabase     # Postgres (já com o schema) + Metabase em :3000
-PYTHONPATH=src DATABASE_URL=postgresql+psycopg2://triage:SUA_SENHA@localhost:5432/triage \
+# com `pip install -e .` feito; no PowerShell use: $env:DATABASE_URL="postgresql+psycopg2://triage:SUA_SENHA@localhost:5432/triage"
+DATABASE_URL=postgresql+psycopg2://triage:SUA_SENHA@localhost:5432/triage \
   python -m triage generate --n 1300
 docker compose run --rm pipeline           # processa a inbox dentro do container
 ```
