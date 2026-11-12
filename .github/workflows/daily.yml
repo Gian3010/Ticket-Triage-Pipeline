@@ -40,3 +40,4 @@ jobs:
       - run: python -m triage generate --n 1300 --seed $(date +%s) --name "lote_$(date +%F).csv"
       - run: python -m triage run
       - run: python -m triage roi
+      # Sem o secret DATABASE_URL o job usa SQLite temporário (demonstração). Para persistir, cadastre o secret com a URL do PostgreSQL.

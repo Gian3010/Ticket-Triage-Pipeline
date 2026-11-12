@@ -172,3 +172,13 @@ def test_roi_uses_measured_data(settings, engine):
     rep = compute_roi(engine, settings)
     assert rep.tickets_measured == 500 and 0 <= rep.review_share <= 1
     assert rep.saved_hours_week < rep.manual_hours_week and rep.saved_pct > 0.5
+
+
+def test_empty_env_vars_fall_back_to_defaults(monkeypatch):
+    """GitHub Actions passa secrets ausentes como string vazia; não pode quebrar a configuração."""
+    monkeypatch.setenv("DATABASE_URL", "")
+    monkeypatch.setenv("TRIAGE_MODEL", "")
+    monkeypatch.setenv("TRIAGE_WORKERS", "")
+    s = Settings()
+    assert s.database_url.startswith("sqlite")
+    assert s.workers == 8
